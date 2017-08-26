@@ -1,0 +1,592 @@
+<html manifest="manifest.appcache">
+<head>
+  <meta charset="utf-8" />
+
+  <title>Baker % Calc</title>
+
+  <link rel="icon" sizes="192x192" href="icon.png" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no, width=device-width" />
+
+  <link rel="manifest" href="manifest.json" />
+
+  <link href="css/ionic.min.css" rel="stylesheet" />
+  <link href="css/custom.css" rel="stylesheet" />
+
+  <script src="js/ionic.bundle.min.js"></script>
+  <script src="js/FileSaver.min.js"></script>
+  <script src="js/app.min.js"></script>
+</head>
+
+<body ng-app="ionicApp" ng-cloak>
+
+  <!-- RECIPES BOOK -->
+
+  <script id="recipe-book.html" type="text/ng-template">
+  <ion-modal-view>
+    <ion-header-bar class="bar-balanced" align-title="center">
+      <button class="button button-icon icon ion-ios-arrow-thin-down" ng-click="closeRecipeBook()"></button>
+      <h1 class="title">{{t.recipe_book}}</h1>
+      <button class="button button-icon icon ion-ios-compose-outline" ng-show="recipeBook.editModeEnabled()" ng-click="editModeToggle()" ng-class="{'custom-edited-recipe' : editMode}"></button>
+    </ion-header-bar>
+
+    <ion-content>
+      <ion-list show-delete="editMode" show-reorder="editMode">
+        <ion-item ng-repeat="recipe in recipeBook.recipes" class="item-remove-animate custom-no-border" ng-click="recipeBook.loadRecipe(recipe)">
+          {{recipe}}
+          <ion-delete-button class="ion-minus-circled" ng-click="recipeBook.delRecipe(recipe)"></ion-delete-button>
+          <ion-reorder-button class="ion-navicon" on-reorder="recipeBook.moveRecipe(recipe, $fromIndex, $toIndex)"></ion-reorder-button>
+          <ion-option-button class="button-assertive" ng-click="recipeBook.renameRecipe(recipe)">{{t.rename}}</ion-option-button>
+        </ion-item>
+      </ion-list>
+    </ion-content>
+  </ion-modal-view>
+  </script>
+
+  <!-- IMPORT -->
+
+  <script id="import.html" type="text/ng-template">
+  <ion-modal-view>
+    <ion-header-bar class="bar-balanced" align-title="center">
+      <button class="button button-icon icon ion-ios-arrow-thin-down" ng-click="closeImport()"></button>
+      <h1 class="title">{{t.import}}</h1>
+    </ion-header-bar>
+
+    <ion-content class="padding">
+      <p class="padding">{{t.import_explain}}</p>
+
+	    <button class="button button-block ion-ios-folder-outline" ng-click="openFileDialog()"> {{t.choose_backup_file}}</button>
+	    <input id="fileInput" hidden="true" type="file" accept="text/plain"/>
+    </ion-content>
+  </ion-modal-view>
+  </script>
+
+  <!-- FAVORITES DOUGH -->
+
+  <script id="favorite-dough.html" type="text/ng-template">
+  <ion-modal-view>
+    <ion-header-bar class="bar-balanced" align-title="center">
+      <button class="button button-icon icon ion-ios-arrow-thin-down" ng-click="closeFavoriteDough()"></button>
+      <h1 class="title">{{t.favorite_dough}}</h1>
+      <button class="button button-icon icon ion-ios-compose-outline" ng-show="recipeBook.editModeEnabled_favoriteDough()" ng-click="editModeToggle()" ng-class="{'custom-edited-recipe' : editMode}"></button>
+    </ion-header-bar>
+
+    <ion-content>
+      <ion-list ng-repeat="recipe in recipeBook.recipes" show-delete="editMode" ng-if="recipeBook.favoriteDough.hasOwnProperty(recipe)">
+		    <ion-item class="item-divider ingredient-section">{{recipe}}</ion-item>
+		    <ion-item class="item-remove-animate custom-no-border" ng-repeat="fd in recipeBook.favoriteDough[recipe]" ng-click="recipeBook.loadFavoriteDough(recipe, fd)">
+          <strong>{{t.scale_by}}:</strong> {{fd.scaleBy}} - <strong>{{t.total}}:</strong> {{fd.total}}g
+          <ion-delete-button class="ion-minus-circled" ng-click="recipeBook.delFavoriteDough(recipe, $index)"></ion-delete-button>
+        </ion-item>
+      </ion-list>
+    </ion-content>
+  </ion-modal-view>
+  </script>
+
+  <!-- SOURDOUGH BUILDER -->
+
+  <script id="sourdough-builder.html" type="text/ng-template">
+  <ion-modal-view>
+    <ion-header-bar class="bar-balanced" align-title="center">
+      <button class="button button-icon icon ion-ios-arrow-thin-down" ng-click="closeSourdoughBuilder();"></button>
+      <h1 class="title">{{sourdoughBuilder.currentBuildName}}</h1>
+      <button class="button button-icon icon ion-ios-compose-outline" ng-show="sourdoughBuilder.editModeEnabled()" ng-click="editModeToggle()" ng-class="{'custom-edited-recipe' : editMode}"></button>
+    </ion-header-bar>
+
+    <ion-tabs class="tabs-top">
+      <ion-tab title="{{t.builds | uppercase}} %" on-select="editModeEnable(true)">
+        <ion-view>
+          <ion-content class="padding">
+            <div class="sourdough-builder-block padding">
+              <button class="button button-block button-stable" ng-show="sourdoughBuilder.builds.length" ng-click="sourdoughBuilder.saveAs()">{{t.save_as | uppercase}}</button>
+              <button class="button button-block button-calm" ng-show="sourdoughBuilder.edited" ng-click="sourdoughBuilder.save()">{{t.save | uppercase}}</button>
+
+              <div class="item item-input custom-item-no-border">
+                <input type="text" placeholder="{{t.new_build}} ..." required="required" ng-model="sourdoughBuilder.addBuildName"/>
+                <button class="button button-icon icon ion-ios-plus-empty" ng-disabled="sourdoughBuilder.addBuildName === ''" ng-click="sourdoughBuilder.addBuild()"></button>
+              </div>
+            </div>
+
+            <div class="padding" ng-show="sourdoughBuilder.builds.length">
+              <ion-list ng-repeat="build in sourdoughBuilder.builds" show-delete="editMode">
+                <ion-item class="item-remove-animate custom-item-no-border">
+                  <div class="item custom-item-no-border ingredient-section"><h2>[{{$index+1}}] {{build.name | uppercase}}</h2></div>
+                  <ion-delete-button class="ion-minus-circled" ng-click="sourdoughBuilder.deleteBuild($index)"></ion-delete-button>
+                </ion-item>
+                <ion-input class="item item-input custom-item-no-border">
+                  <ion-label>{{t.flour}}</ion-label>
+                  <input readonly="readonly" type="number" value="{{build.flour}}" class="custom-input-percentage"/><span class="custom-unit-field">%</span>
+                </ion-input>
+                <ion-input class="item item-input custom-item-no-border">
+                  <ion-label>{{t.water}}</ion-label>
+                  <input ng-change="sourdoughBuilder.notifyEdit()" type="number" required="required" ng-model="build.water" value="{{build.water}}" class="custom-input-percentage" min="0"/><span class="custom-unit-field">%</span>
+                </ion-input>
+                <ion-input class="item item-input custom-item-no-border">
+                  <ion-label>{{t.sourdough_seed}}</ion-label>
+                  <input ng-change="sourdoughBuilder.notifyEdit()" type="number" required="required" ng-model="build.starter" value="{{build.starter}}" class="custom-input-percentage" min="0"/><span class="custom-unit-field">%</span>
+                </ion-input>
+              </ion-list>
+            </div>
+          </ion-content>
+        </ion-view>
+      </ion-tab>
+
+      <ion-tab title="{{t.total | uppercase}}" on-select="editModeEnable(false)">
+        <ion-view>
+           <ion-content class="padding">
+            <div ng-show="sourdoughBuilder.builds.length">
+              <ion-input class="item item-input custom-item-no-border">
+                <ion-label>{{t.total_amount}}</ion-label>
+                <input type="number" ng-model="sourdoughBuilder.total" class="custom-input-percentage" value="{{sourdoughBuilder.total}}" min="0" required="required"/><span class="custom-unit-field">g</span>
+              </ion-input>
+              <button class="button button-block button-positive" ng-click="sourdoughBuilder.calculate()">{{t.calculate | uppercase}}</button>
+            </div>
+
+            <div class="padding" ng-repeat="b in sourdoughBuilder.buildsWeight">
+              <h4 class="ingredient-section">[{{$index+1}}] {{b.name | uppercase}}</h4>
+              <div class="row custom-col-thead custom-row-even">
+                <div class="col">{{t.ingredients | uppercase}}</div>
+                <div class="col custom-col-number">{{t.weight | uppercase}}</div>
+              </div>
+              <div class="row custom-row-odd">
+                <div class="col">{{t.flour}}</div>
+                <div class="col custom-col-number">{{b.flour}} g</div>
+              </div>
+              <div class="row custom-row-even">
+                <div class="col">{{t.water}}</div>
+                <div class="col custom-col-number">{{b.water}} g</div>
+              </div>
+              <div class="row custom-row-odd">
+                <div class="col">{{t.sourdough_seed}}</div>
+                <div class="col custom-col-number">{{b.starter}} g</div>
+              </div>
+              <div class="row custom-row-even">
+                <div class="col"></div>
+                <div class="col custom-col-number">{{b.total}} g</div>
+              </div>
+            </div>
+          </ion-content>
+        </ion-view>
+      </ion-tab>
+    </ion-tabs>
+  </ion-modal-view>
+  </script>
+
+  <!-- SOURDOUGH BUILDER BOOK -->
+
+  <script id="sourdough-builder-book.html" type="text/ng-template">
+  <ion-modal-view>
+    <ion-header-bar class="bar-balanced" align-title="center">
+      <button class="button button-icon icon ion-ios-arrow-thin-down" ng-click="closeSourdoughBuilderBook()"></button>
+      <h1 class="title">{{t.sourdough_builder_book}}</h1>
+      <button class="button button-icon icon ion-ios-compose-outline" ng-show="sourdoughBuilder.editModeEnabled_book()" ng-click="editModeToggle()" ng-class="{'custom-edited-recipe' : editMode}"></button>
+    </ion-header-bar>
+
+    <ion-content>
+      <ion-list show-delete="editMode" show-reorder="editMode">
+        <ion-item ng-repeat="item in sourdoughBuilder.book" class="item-remove-animate custom-no-border" ng-click="sourdoughBuilder.loadBook(item)">
+          {{item.name}}
+          <ion-delete-button class="ion-minus-circled" ng-click="sourdoughBuilder.delBook($index)"></ion-delete-button>
+          <ion-reorder-button class="ion-navicon" on-reorder="sourdoughBuilder.moveBook(item, $fromIndex, $toIndex)"></ion-reorder-button>
+          <ion-option-button class="button-assertive" ng-click="sourdoughBuilder.renameBook($index)">{{t.rename}}</ion-option-button>
+        </ion-item>
+      </ion-list>
+    </ion-content>
+  </ion-modal-view>
+  </script>
+
+  <!-- DESIRED DOUGH TEMPERATURE -->
+
+  <script id="desired-dough-temperature.html" type="text/ng-template">
+  <ion-modal-view>
+    <ion-header-bar class="bar-balanced" align-title="center">
+      <button class="button button-icon icon ion-ios-arrow-thin-down" ng-click="closeDDT()"></button>
+      <h1 class="title">{{t.ddt}}</h1>
+    </ion-header-bar>
+
+    <ion-content class="padding">
+      <div class="padding num-preferment-block">
+        <h4 class="ingredient-section">{{t.number_of_preferments}}: {{ddt.numberOfPreferments}}</h4>
+        <div class="item range custom-item-no-border">
+          <input type="range" min="0" max="4" value="ddt.numberOfPreferments" ng-model="ddt.numberOfPreferments" ng-change="ddt.calculate()"/>
+        </div>
+      </div>
+      <ion-list>
+        <ion-item class="custom-item-no-border custom-item-no-padding">
+          <ion-input class="item item-input custom-item-no-border">
+            <ion-label>{{t.ddt}}</ion-label>
+            <input type="number" required="required" ng-model="ddt.desired" value="{{ddt.desired}}" ng-change="ddt.calculate()" class="custom-input-percentage"/><span class="custom-unit-field">°</span>
+          </ion-input>
+        </ion-item>
+        <ion-item class="custom-item-no-border custom-item-no-padding">
+          <ion-input class="item item-input custom-item-no-border">
+            <ion-label>{{t.flour_temperature}}</ion-label>
+            <input type="number" required="required" ng-model="ddt.flour" value="{{ddt.flour}}" ng-change="ddt.calculate()" class="custom-input-percentage"/><span class="custom-unit-field">°</span>
+          </ion-input>
+        </ion-item>
+        <ion-item class="custom-item-no-border custom-item-no-padding">
+          <ion-input class="item item-input custom-item-no-border">
+            <ion-label>{{t.room_temperature}}</ion-label>
+            <input type="number" required="required" ng-model="ddt.room" value="{{ddt.room}}" ng-change="ddt.calculate()" class="custom-input-percentage"/><span class="custom-unit-field">°</span>
+          </ion-input>
+        </ion-item>
+        <ion-item class="custom-item-no-border custom-item-no-padding">
+          <ion-input class="item item-input custom-item-no-border">
+            <ion-label>{{t.friction_factor}}</ion-label>
+            <input type="number" required="required" ng-model="ddt.friction" value="{{ddt.friction}}" ng-change="ddt.calculate()" class="custom-input-percentage"/><span class="custom-unit-field">°</span>
+          </ion-input>
+        </ion-item>
+        <ion-item class="custom-item-no-border custom-item-no-padding" ng-show="ddt.numberOfPreferments >= 1">
+          <ion-input class="item item-input custom-item-no-border">
+            <ion-label>{{t.preferment_temperature}} #1</ion-label>
+            <input type="number" required="required" ng-model="ddt.preferment[0]" value="{{ddt.preferment[0]}}" ng-change="ddt.calculate()" class="custom-input-percentage"/><span class="custom-unit-field">°</span>
+          </ion-input>
+        </ion-item>
+        <ion-item class="custom-item-no-border custom-item-no-padding" ng-show="ddt.numberOfPreferments >= 2">
+          <ion-input class="item item-input custom-item-no-border">
+            <ion-label>{{t.preferment_temperature}} #2</ion-label>
+            <input type="number" required="required" ng-model="ddt.preferment[1]" value="{{ddt.preferment[1]}}" ng-change="ddt.calculate()" class="custom-input-percentage"/><span class="custom-unit-field">°</span>
+          </ion-input>
+        </ion-item>
+        <ion-item class="custom-item-no-border custom-item-no-padding" ng-show="ddt.numberOfPreferments >= 3">
+          <ion-input class="item item-input custom-item-no-border">
+            <ion-label>{{t.preferment_temperature}} #3</ion-label>
+            <input type="number" required="required" ng-model="ddt.preferment[2]" value="{{ddt.preferment[2]}}" ng-change="ddt.calculate()" class="custom-input-percentage"/><span class="custom-unit-field">°</span>
+          </ion-input>
+        </ion-item>
+        <ion-item class="custom-item-no-border custom-item-no-padding" ng-show="ddt.numberOfPreferments >= 4">
+          <ion-input class="item item-input custom-item-no-border">
+            <ion-label>{{t.preferment_temperature}} #4</ion-label>
+            <input type="number" required="required" ng-model="ddt.preferment[3]" value="{{ddt.preferment[3]}}" ng-change="ddt.calculate()" class="custom-input-percentage"/><span class="custom-unit-field">°</span>
+          </ion-input>
+        </ion-item>
+      </ion-list>
+      <h4 class="padding ingredient-section">{{t.water_temperature}}: {{ddt.water}}</h4>
+    </ion-content>
+  </ion-modal-view>
+  </script>
+
+  <ion-side-menus ng-controller="bcCtrl">
+
+    <!-- MAIN CONTENT -->
+
+    <ion-side-menu-content>
+
+      <ion-header-bar class="bar-balanced" align-title="center">
+        <button menu-toggle="left" class="button button-icon icon ion-navicon" ng-class="{'custom-edited-recipe' : recipeBook.currentRecipeEdited}"></button>
+        <h1 class="title">{{recipeBook.currentRecipeName}}</h1>
+        <button class="button button-icon icon ion-ios-compose-outline" ng-show="editModeEnabled()" ng-click="editModeToggle()" ng-class="{'custom-edited-recipe' : editMode}"></button>
+      </ion-header-bar>
+
+      <ion-tabs class="tabs-top">
+
+        <!-- OVERALL % TAB PAGE -->
+
+        <ion-tab title="{{t.overall | uppercase}} %" on-select="editModeEnable(true)">
+          <ion-view>
+            <ion-content class="padding">
+
+              <!-- FLOURS SUBSECTION -->
+
+              <h4 class="ingredient-section">{{t.flours | uppercase}}</h4>
+              <ion-list show-delete="editMode" show-reorder="editMode">
+                <ion-item ng-repeat="flour in overall.flours" class="item-remove-animate custom-item-no-border">
+                  <ion-input class="item item-input custom-item-no-border">
+                    <ion-label>{{flour.name}}</ion-label>
+                    <input ng-hide="editMode" ng-change="recipeBook.notifyEdit()" type="number" required="required" ng-model="flour.value" value="{{flour.value}}" class="custom-input-percentage" min="0" max="100"/><span ng-hide="editMode" class="custom-unit-field">%</span>
+                  </ion-input>
+                  <ion-delete-button class="ion-minus-circled" ng-click="overall.delFlour(flour)"></ion-delete-button>
+                  <ion-reorder-button class="ion-navicon" on-reorder="overall.moveFlour(flour, $fromIndex, $toIndex)"></ion-reorder-button>
+                </ion-item>
+              </ion-list>
+              <div class="list">
+                <div class="item item-input custom-item-no-border" ng-form="addFlourForm">
+                  <input type="text" placeholder="{{t.new_flour}} ..." required="required" name="name" ng-model="overall.addFlourName"/>
+                  <button class="button button-icon icon ion-ios-plus-empty" ng-disabled="addFlourForm.name.$invalid" ng-click="overall.addFlour()"></button>
+                </div>
+              </div>
+
+              <!-- INGREDIENTS SUBSECTION -->
+
+              <h4 class="ingredient-section">{{t.ingredients | uppercase}}</h4>
+              <ion-list show-delete="editMode" show-reorder="editMode">
+                <ion-item ng-repeat="ingr in overall.ingredients" class="item-remove-animate custom-item-no-border">
+                  <ion-input class="item item-input custom-item-no-border">
+                    <ion-label>{{ingr.name}}</ion-label>
+                    <input ng-hide="editMode" ng-change="recipeBook.notifyEdit()" type="number" required="required" ng-model="ingr.value" value="{{ingr.value}}" class="custom-input-percentage" min="0"/><span ng-hide="editMode" class="custom-unit-field">%</span>
+                  </ion-input>
+                  <ion-delete-button class="ion-minus-circled" ng-click="overall.delIngredient(ingr)"></ion-delete-button>
+                  <ion-reorder-button class="ion-navicon" on-reorder="overall.moveIngredient(ingr, $fromIndex, $toIndex)"></ion-reorder-button>
+                </ion-item>
+              </ion-list>
+              <div class="list">
+                <div class="item item-input custom-item-no-border" ng-form="addIngredientForm">
+                  <input type="text" placeholder="{{t.new_ingredient}} ..." required="required" name="name" ng-model="overall.addIngredientName"/>
+                  <button class="button button-icon icon ion-ios-plus-empty" ng-disabled="addIngredientForm.name.$invalid" ng-click="overall.addIngredient()"></button>
+                </div>
+              </div>
+
+            </ion-content>
+          </ion-view>
+        </ion-tab>
+
+        <!-- PREFERMENT % TAB PAGE -->
+
+        <ion-tab title="{{t.preferment | uppercase}} %" on-select="editModeEnable(true)">
+          <ion-view>
+            <ion-content class="padding">
+
+              <!-- ADD NEW PREFERMENT/SOURDOUGH ... -->
+
+              <div class="padding preferment-block">
+                <div class="item item-input custom-item-no-border">
+                  <input type="text" placeholder="{{t.new}} ..." required="required" ng-model="preferment.addPrefermentName"/>
+                  <button class="button button-icon icon ion-ios-plus-empty" ng-disabled="preferment.addPrefermentName === '' || preferment.addPrefermentType === ''" ng-click="preferment.addPreferment()"></button>
+                </div>
+                <ion-input class="item item-input item-select custom-item-no-border pickup-label">
+                  <ion-label>{{t.dough | uppercase}}</ion-label>
+                  <select ng-model="preferment.addPrefermentType" class="pickup-label">
+                    <option value="">{{t.type | uppercase}}</option>
+                    <option value="preferment">{{t.preferment}}</option>
+                    <option value="sourdough">{{t.sourdough}}</option>
+                  </select>
+                </ion-input>
+              </div>
+
+              <!-- PREFERMENT SECTION -->
+
+              <div ng-repeat="pref in preferment.preferments" class="padding preferment-block">
+
+                <ion-list show-delete="editMode" show-reorder="editMode">
+
+                  <!-- PREFERMENT/SOURDOUGH NAME -->
+
+                  <ion-item class="item-remove-animate custom-item-no-border">
+                    <div class="item custom-item-no-border ingredient-section"><h2>{{pref.name}}</h2><h4>[{{t[pref.type]}}]</h4></div>
+                    <ion-delete-button class="ion-minus-circled" ng-click="preferment.delPreferment(pref)"></ion-delete-button>
+                  </ion-item>
+
+                  <!-- % PREFERMENTED OVERALL FLOUR / [SOURDOUGH SEED] -->
+
+                  <div class="list">
+                    <ion-input class="item item-input custom-item-no-border">
+                       <ion-label>{{t.prefermented_flour}}</ion-label>
+                       <input type="number" required="required" ng-change="recipeBook.notifyEdit()" ng-model="pref.prefFlourValue" value="{{pref.prefFlourValue}}" class="custom-input-percentage" min="0" max="100"/><span class="custom-unit-field">%</span>
+                    </ion-input>
+                    <ion-input class="item item-input custom-item-no-border" ng-if="pref.type === 'sourdough'">
+                       <ion-label>{{t.sourdough_seed}}</ion-label>
+                       <input type="number" required="required" ng-change="recipeBook.notifyEdit()" ng-model="pref.seed" value="{{pref.seed}}" class="custom-input-percentage" min="0" max="100"/><span class="custom-unit-field">%</span>
+                    </ion-input>
+                  </div>
+
+                  <!-- FLOURS IN PREFERMENT -->
+
+                  <ion-item ng-repeat="flour in pref.flours" class="item-remove-animate custom-item-no-border">
+                    <ion-input class="item item-input custom-item-no-border">
+                      <ion-label class="preferment-flour-color">{{overall.flours[flour.flourRef].name}}</ion-label>
+                      <input ng-hide="editMode" ng-change="recipeBook.notifyEdit()" type="number" required="required" ng-model="flour.value" value="{{flour.value}}" class="custom-input-percentage  preferment-flour-color" min="0" max="100"/><span ng-hide="editMode" class="custom-unit-field">%</span>
+                    </ion-input>
+                    <ion-delete-button class="ion-minus-circled" ng-click="preferment.delFlour(pref, flour)"></ion-delete-button>
+                    <!-- $fromIndex-1, $toIndex-1  -  WORKAROUND per avere nella stessa io-list e' presente 1 io-item qui sopra
+                         Anche se porto il primo io-item in una io-list separata queste vengono poi fuse in una sola dal framework -->
+                    <ion-reorder-button class="ion-navicon" on-reorder="preferment.moveFlour(pref, flour, $fromIndex-1, $toIndex-1)"></ion-reorder-button>
+                  </ion-item>
+
+                  <!-- INGREDIENTS IN PREFERMENT -->
+
+                  <ion-item ng-repeat="ingr in pref.ingredients" class="item-remove-animate custom-item-no-border">
+                    <ion-input class="item item-input custom-item-no-border">
+                      <ion-label class="preferment-ingredient-color">{{overall.ingredients[ingr.ingrRef].name}}</ion-label>
+                      <input ng-hide="editMode" ng-change="recipeBook.notifyEdit()" type="number" required="required" ng-model="ingr.value" value="{{ingr.value}}" class="custom-input-percentage preferment-ingredient-color" min="0"/><span ng-hide="editMode" class="custom-unit-field">%</span>
+                    </ion-input>
+                    <ion-delete-button class="ion-minus-circled" ng-click="preferment.delIngredient(pref, ingr)"></ion-delete-button>
+                    <!-- $fromIndex-1, $toIndex-1  -  WORKAROUND per avere nella stessa io-list e' presente 1 io-item qui sopra
+                         Anche se porto il primo io-item in una io-list separata queste vengono poi fuse in una sola dal framework -->
+                    <ion-reorder-button class="ion-navicon" on-reorder="preferment.moveIngredient(pref, ingr, $fromIndex-1-pref.flours.length, $toIndex-1-pref.flours.length)"></ion-reorder-button>
+                  </ion-item>
+                </ion-list>
+
+                <div class="list">
+
+                  <!-- PICKUP FLOURS FORM -->
+
+                  <ion-input class="item item-input item-select custom-item-no-border pickup-label">
+                    <ion-label class="preferment-flour-color">{{t.pickup}}</ion-label>
+                    <select ng-options="flour.name for flour in preferment.availableFlours(pref)" ng-model="preferment.selectedFlour" ng-change="preferment.addFlour(pref)" class="preferment-flour-color pickup-label">
+                      <option value="">{{t.flour | uppercase}}</option>
+                    </select>
+                  </ion-input>
+
+                  <!-- PICKUP INGREDIENTS FORM -->
+
+                  <ion-input class="item item-input item-select custom-item-no-border pickup-label">
+                    <ion-label class="preferment-ingredient-color">{{t.pickup}}</ion-label>
+                    <select ng-options="ingr.name for ingr in preferment.availableIngredients(pref)" ng-model="preferment.selectedIngredient" ng-change="preferment.addIngredient(pref)" class="preferment-ingredient-color pickup-label">
+                      <option value="">{{t.ingredient | uppercase}}</option>
+                    </select>
+                  </ion-input>
+                </div>
+
+              </div>
+            </ion-content>
+          </ion-view>
+        </ion-tab>
+
+        <!-- FINAL DOUGH TAB PAGE -->
+
+        <ion-tab title="{{t.final_dough | uppercase}}" on-select="editModeEnable(false)">
+          <ion-view>
+            <ion-content class="padding">
+
+              <!-- DATA -->
+
+              <div class="list" style="margin-bottom: 0">
+                <ion-input class="item item-input item-select custom-item-no-border">
+                  <ion-label>{{t.scale_by}}:</ion-label>
+                  <select ng-model="finalDough.scaleBy">
+                    <option value="DOUGH">{{t.dough | uppercase}}</option>
+                    <option value="FLOUR">{{t.flour | uppercase}}</option>
+                  </select>
+                </ion-input>
+                <ion-input class="item item-input custom-item-no-border">
+                  <ion-label>{{t.total_amount}}</ion-label>
+                  <input type="number" ng-model="finalDough.total" class="custom-input-percentage" value="{{finalDough.total}}" min="0" required="required"/><span class="custom-unit-field">g</span>
+                </ion-input>
+              </div>
+
+              <button class="button button-block button-calm" ng-show="storageSuopport && recipeBook.loadedRecipe" ng-click="recipeBook.addFavoriteDough()">{{t.add_to_favorites | uppercase}}</button>
+              <button class="button button-block button-positive" ng-click="finalDough.calculate()">{{t.calculate | uppercase}}</button>
+
+              <!-- OVERALL TABLE -->
+
+              <div class="padding" ng-show="finalDough.overall.length != 0">
+                <h4 class="ingredient-section">{{t.overall | uppercase}}</h4>
+                <div class="row custom-col-thead">
+                  <div class="col">{{t.ingredients | uppercase}}</div>
+                  <div class="col col-20 custom-col-number">%</div>
+                  <div class="col custom-col-number">{{t.weight | uppercase}}</div>
+                </div>
+                <div class="row" ng-repeat="item in finalDough.overall" ng-class-odd="'custom-row-odd'" ng-class-even="'custom-row-even'">
+                  <div class="col">{{item.name}}</div>
+                  <div class="col col-20 custom-col-number">{{item.value}}</div>
+                  <div class="col custom-col-number">{{item.weight}} g</div>
+                </div>
+              </div>
+
+              <!--  PREFERMENTS TABLES -->
+
+              <div class="padding" ng-show="finalDough.preferments.length != 0" ng-repeat="pref in finalDough.preferments">
+                <h4 class="ingredient-section">{{pref.name}}</h4>
+                <h6 class="ingredient-section">{{t.prefermented_flour}} {{pref.prefFlourValue}}%</h6>
+                <div class="row custom-col-thead">
+                  <div class="col">{{t.ingredients | uppercase}}</div>
+                  <div class="col col-20 custom-col-number">%</div>
+                  <div class="col custom-col-number">{{t.weight | uppercase}}</div>
+                </div>
+                <div class="row" ng-repeat="item in pref" ng-class-odd="'custom-row-odd'" ng-class-even="'custom-row-even'">
+                  <div class="col">{{item.name}}</div>
+                  <div class="col col-20 custom-col-number">{{item.value}}</div>
+                  <div class="col custom-col-number">{{item.weight}} g</div>
+                </div>
+              </div>
+
+              <!--  FINAL DOUGH TABLE -->
+
+              <div class="padding" ng-show="finalDough.dough.length != 0">
+                <h4 class="ingredient-section">{{t.dough | uppercase}}</h4>
+                <div class="row custom-col-thead">
+                  <div class="col">{{t.ingredients | uppercase}}</div>
+                  <div class="col col-20 custom-col-number">%</div>
+                  <div class="col custom-col-number">{{t.weight | uppercase}}</div>
+                </div>
+                <div class="row" ng-repeat="item in finalDough.dough" ng-class-odd="'custom-row-odd'" ng-class-even="'custom-row-even'">
+                  <div class="col">{{item.name}}</div>
+                  <div class="col col-20 custom-col-number">-</div>
+                  <div class="col custom-col-number">{{item.weight}} g</div>
+                </div>
+              </div>
+
+            </ion-content>
+          </ion-view>
+        </ion-tab>
+      </ion-tabs>
+    </ion-side-menu-content>
+
+    <!-- LEFT SIDE MENU -->
+
+    <ion-side-menu side="left">
+      <ion-header-bar class="bar bar-header bar-assertive">
+        <h1 class="title">{{t.app_name | uppercase}}</h1>
+      </ion-header-bar>
+      <ion-content>
+        <ul class="list">
+          <li ng-if="storageSuopport">
+            <a href="#" menu-close="true" class="item item-icon-right custom-no-border" ng-click="showFavoriteDough()">
+              {{t.favorite_dough}}<i class="icon ion-ios-bookmarks-outline"></i>
+            </a>
+          </li>
+          <li ng-if="storageSuopport">
+            <a href="#" menu-close="true" class="item item-icon-right custom-no-border" ng-click="showRecipeBook()">
+              {{t.recipe_book}}<i class="icon ion-ios-book-outline"></i>
+            </a>
+          </li>
+          <li class="custom-divider"></li>
+          <li ng-if="storageSuopport">
+            <a href="#" menu-close="true" class="item item-icon-right custom-no-border" ng-click="showSourdoughBuilder()">
+              {{t.sourdough_builder}}<i class="icon ion-ios-infinite-outline"></i>
+            </a>
+          </li>
+          <li ng-if="storageSuopport">
+            <a href="#" menu-close="true" class="item item-icon-right custom-no-border" ng-click="showSourdoughBuilderBook()">
+              {{t.sourdough_builder_book}}<i class="icon ion-ios-book-outline"></i>
+            </a>
+          </li>
+           <li class="custom-divider"></li>
+          <li>
+            <a href="#" menu-close="true" class="item item-icon-right custom-no-border" ng-click="showDDT()">
+              {{t.ddt}}<i class="icon ion-ios-flask-outline"></i>
+            </a>
+          </li>
+          <li class="custom-divider"></li>
+          <li ng-if="storageSuopport">
+            <a href="#" menu-close="true" class="item item-icon-right custom-no-border" ng-click="showSaveAs()">
+              {{t.save_as}} ... <i class="icon ion-ios-plus-empty"></i>
+            </a>
+          </li>
+          <li ng-if="storageSuopport && recipeBook.currentRecipeEdited">
+            <a href="#" menu-close="true" class="item item-icon-right custom-edited-recipe custom-no-border" ng-click="recipeBook.saveRecipe(true)">
+              {{t.save}} <i class="icon ion-ios-checkmark-empty"></i>
+            </a>
+          </li>
+          <li>
+            <a href="#" menu-close="true" class="item item-icon-right custom-no-border" ng-click="showReset()">
+              {{t.reset}} <i class="icon ion-ios-reload"></i>
+            </a>
+          </li>
+          <li class="custom-divider"></li>
+          <li ng-if="storageSuopport && fileAPISupport">
+            <a href="#" menu-close="true" class="item item-icon-right custom-no-border" ng-click="_export()">
+              {{t.export}} <i class="icon ion-ios-upload-outline"></i>
+            </a>
+          </li>
+          <li ng-if="storageSuopport && fileAPISupport">
+            <a href="#" menu-close="true" class="item item-icon-right custom-no-border" ng-click="showImport()">
+              {{t.import}} <i class="icon ion-ios-download-outline"></i>
+            </a>
+          </li>
+          <li class="custom-divider"></li>
+          <li>
+            <a href="#" menu-close="true" class="item item-icon-right custom-no-border" ng-click="showAbout()">
+              {{t.about}} <i class="icon ion-ios-information-empty"></i>
+            </a>
+          </li>
+        </ul>
+      </ion-content>
+    </ion-side-menu>
+  </ion-side-menus>
+
+</body>
+</html>

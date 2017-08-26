@@ -1,0 +1,109 @@
+/* overwrite modal class: landscape full screen */
+
+.modal {
+  top: 0;
+  bottom: 0; 
+  left: 0;
+  right: 0;
+  width: 100%;
+}
+
+.ingredient-section {
+	text-align: center;
+}
+
+/* INPUT inside io-item*/
+   
+.custom-item-no-border { 				/* no border */
+	border: none !important;
+}
+
+.custom-no-border {
+	border: none !important;
+}
+
+.custom-item-no-border .item-content { 				/* better fit */
+	padding: 0px !important;
+}
+
+.custom-item-no-padding {
+	padding: 5px !important;
+}
+
+/* END INPUT inside io-item */
+
+
+ion-label {
+	display: block !important;
+}
+
+/* READ ONLY input in sourdough builer (Flour=100%), no grey background */
+input[readonly] {
+    background-color: initial !important;
+}
+
+.preferment-block, .sourdough-builder-block, .num-preferment-block {
+    border-bottom-style: solid !important;
+    border-bottom-width: thin !important;
+    border-bottom-color: lightgray !important;
+}
+
+.preferment-flour-color {
+	color: red !important;
+}
+
+.preferment-ingredient-color {
+	color: blue !important;
+}
+
+.pickup-label {
+	background-color: aliceblue !important;	
+}
+
+.custom-input-percentage {
+    text-align: right !important;
+    padding-right: 0px !important;
+}
+
+.custom-unit-field {   /* % or g */
+	font-size: 14px;
+    color: black;
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+.custom-col-thead {
+	font-weight: bold;
+}
+
+.custom-col-number {
+	text-align: right !important;
+}
+
+.custom-row-odd {
+  background: aliceblue;
+}
+
+.custom-row-even {
+  background: white;
+}
+
+.custom-edited-recipe {
+	color: blue !important;
+}
+
+.custom-qrcode-container {
+	box-sizing: content-box;
+}
+
+.custom-text-area {
+	height: 100%;
+	width: 100%;
+}
+
+.custom-divider { 
+    margin: 2px 0;
+    height: 1px;
+    border: 0;
+    background: #ddd;
+}

@@ -1,0 +1,16 @@
+CACHE MANIFEST
+# 2017-08-25:1
+
+icon.png
+apple-touch-icon.png
+index.html
+manifest.json
+css/custom.css
+css/ionic.min.css
+fonts/ionicons.eot
+fonts/ionicons.svg
+fonts/ionicons.ttf
+fonts/ionicons.woff
+js/app.min.js
+js/FileSaver.min.js
+js/ionic.bundle.min.js
