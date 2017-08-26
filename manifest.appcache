@@ -14,3 +14,9 @@ fonts/ionicons.woff
 js/app.min.js
 js/FileSaver.min.js
 js/ionic.bundle.min.js
+icons/icon-36.png 
+icons/icon-48.png 
+icons/icon-72.png 
+icons/icon-96.png
+icons/icon-144.png
+icons/icon-192.png
