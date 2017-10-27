@@ -92,10 +92,6 @@ input[readonly] {
 	color: blue !important;
 }
 
-.custom-qrcode-container {
-	box-sizing: content-box;
-}
-
 .custom-text-area {
 	height: 100%;
 	width: 100%;
