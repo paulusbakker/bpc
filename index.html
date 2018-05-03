@@ -490,7 +490,8 @@
                 <div class="row" ng-repeat="item in pref" ng-class-odd="'custom-row-odd'" ng-class-even="'custom-row-even'">
                   <div class="col">{{item.name}}</div>
                   <div class="col col-20 custom-col-number">{{item.value}}</div>
-                  <div class="col custom-col-number">{{item.weight}} g</div>
+                  <div class="col custom-col-number" ng-if="! item.isSourdoughSeed">{{item.weight}} g</div>
+                  <div class="col custom-col-number final-dough-sourdough-seed-color" ng-if="item.isSourdoughSeed">{{item.weight}} g</div>
                 </div>
               </div>
 

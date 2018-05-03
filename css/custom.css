@@ -56,6 +56,10 @@ input[readonly] {
 	color: blue !important;
 }
 
+.final-dough-sourdough-seed-color {
+	color: gray !important;
+}
+
 .pickup-label {
 	background-color: aliceblue !important;	
 }
